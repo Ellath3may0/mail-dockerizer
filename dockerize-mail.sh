@@ -23,12 +23,14 @@ cp    /etc/gshadow        gshadow
 
 # Find and copy mailboxes
 mkdir home
+users=()
 for u in /home/*/
 do
   #TODO: get mail directory from config files
-  if [ -d /home/"$u"/Maildir ]; then
+  if [ -d "$u"/Maildir ]; then
+    $users+=$(echo "$u" | sed 's:.*/::')
     echo "Copying home directory: $u"
-    cp -r /home/"$u" home/"$u"
+    cp -r "$u" ."$u"
   fi
 done
 
@@ -38,25 +40,14 @@ touch supervisord.conf
 echo "[supervisord]"                > supervisord.conf
 echo "nodaemon=true"                >> supervisord.conf
 echo "user=root"                    >> supervisord.conf
-echo "logfile=/dev/null"            >> supervisord.conf
-echo "logfile_maxbytes=0"           >> supervisord.conf
-echo "pidfile=/run/supervisord.pid" >> supervisord.conf
 echo ""                             >> supervisord.conf
 echo "[program:dovecot]"            >> supervisord.conf
 echo "command=/usr/sbin/dovecot -F" >> supervisord.conf
-echo "priority=20"                  >> supervisord.conf
 echo "autorestart=true"             >> supervisord.conf
-echo "stdout_logfile=/dev/stdout"   >> supervisord.conf
-echo "stdout_logfile_maxbytes=0"    >> supervisord.conf
-echo "redirect_stderr=true"         >> supervisord.conf
 echo "" >> supervisord.conf
 echo "[program:postfix]"                  >> supervisord.conf
 echo "command=/usr/sbin/postfix start-fg" >> supervisord.conf
-echo "priority=30"                        >> supervisord.conf
 echo "autorestart=true"                   >> supervisord.conf
-echo "stdout_logfile=/dev/stdout"         >> supervisord.conf
-echo "stdout_logfile_maxbytes=0"          >> supervisord.conf
-echo "redirect_stderr=true"               >> supervisord.conf
 echo "supervisord.conf generated"
 
 # Generate Dockerfile
@@ -68,7 +59,7 @@ echo ""                                             >> Dockerfile
 echo "COPY postetc          /etc/postfix"           >> Dockerfile
 echo "COPY doveetc          /etc/dovecot"           >> Dockerfile
 echo "COPY postspool        /var/spool/postfix"     >> Dockerfile
-echo "COPY mail             /var/mail || true"      >> Dockerfile
+echo "COPY mail             /var/spool/mail"        >> Dockerfile
 echo "COPY dovelib          /var/lib/dovecot"       >> Dockerfile
 echo "COPY passwd           /etc/passwd"            >> Dockerfile
 echo "COPY group            /etc/group"             >> Dockerfile
@@ -77,7 +68,7 @@ echo "COPY gshadow          /etc/gshadow"           >> Dockerfile
 echo ""                                             >> Dockerfile
 
 # Copy home directories
-for u in home/*/
+for u in $users
 do
   echo "COPY home/$u /home/$u" >> Dockerfile
   echo "RUN chown -R $(sed -n 's|[^:]*:[^:]*:\([0-9]*\):[^:]*:[^:]*:/home/$u:.*|\1|p' /etc/passwd):$(sed -n 's|[^:]*:[^:]*:[^:]*:\([0-9]*\):[^:]*:/home/$u:.*|\1|p' /etc/passwd) /home/$u" >> Dockerfile
