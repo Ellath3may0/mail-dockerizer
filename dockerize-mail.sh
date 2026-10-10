@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Install Docker
-sh $(curl -fsSL https://get.docker.com)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh ./get-docker.sh
+rm get-docker.sh
 
-# Create working directory
 mkdir docker && cd docker
 
 # Stop services
@@ -31,6 +32,34 @@ do
   fi
 done
 
+# Generate supervisord.conf
+echo "Generating supervisord.conf..."
+touch supervisord.conf
+echo "[supervisord]"                > supervisord.conf
+echo "nodaemon=true"                >> supervisord.conf
+echo "user=root"                    >> supervisord.conf
+echo "logfile=/dev/null"            >> supervisord.conf
+echo "logfile_maxbytes=0"           >> supervisord.conf
+echo "pidfile=/run/supervisord.pid" >> supervisord.conf
+echo ""                             >> supervisord.conf
+echo "[program:dovecot]"            >> supervisord.conf
+echo "command=/usr/sbin/dovecot -F" >> supervisord.conf
+echo "priority=20"                  >> supervisord.conf
+echo "autorestart=true"             >> supervisord.conf
+echo "stdout_logfile=/dev/stdout"   >> supervisord.conf
+echo "stdout_logfile_maxbytes=0"    >> supervisord.conf
+echo "redirect_stderr=true"         >> supervisord.conf
+echo "" >> supervisord.conf
+echo "[program:postfix]"                  >> supervisord.conf
+echo "command=/usr/sbin/postfix start-fg" >> supervisord.conf
+echo "priority=30"                        >> supervisord.conf
+echo "autorestart=true"                   >> supervisord.conf
+echo "stdout_logfile=/dev/stdout"         >> supervisord.conf
+echo "stdout_logfile_maxbytes=0"          >> supervisord.conf
+echo "redirect_stderr=true"               >> supervisord.conf
+echo "supervisord.conf generated"
+
+# Generate Dockerfile
 echo "Generating Dockerfile..."
 touch Dockerfile
 echo "FROM fedora:42"                               > Dockerfile
@@ -39,13 +68,12 @@ echo ""                                             >> Dockerfile
 echo "COPY postetc          /etc/postfix"           >> Dockerfile
 echo "COPY doveetc          /etc/dovecot"           >> Dockerfile
 echo "COPY postspool        /var/spool/postfix"     >> Dockerfile
-echo "COPY mail             /var/mail"              >> Dockerfile
+echo "COPY mail             /var/mail || true"      >> Dockerfile
 echo "COPY dovelib          /var/lib/dovecot"       >> Dockerfile
 echo "COPY passwd           /etc/passwd"            >> Dockerfile
 echo "COPY group            /etc/group"             >> Dockerfile
 echo "COPY shadow           /etc/shadow"            >> Dockerfile
 echo "COPY gshadow          /etc/gshadow"           >> Dockerfile
-echo "COPY supervisord.conf /etc/supervisord.conf"  >> Dockerfile
 echo ""                                             >> Dockerfile
 
 # Copy home directories
@@ -77,7 +105,7 @@ echo "services:"                > docker-compose.yaml
 echo "  mail:"                  >> docker-compose.yaml
 echo "    image: mail:latest"   >> docker-compose.yaml
 echo "    pull_policy: never"   >> docker-compose.yaml
-echo "     network_mode: host"  >> docker-compose.yaml
+echo "    network_mode: host"   >> docker-compose.yaml
 #echo "    ports:"               >> docker-compose.yaml
 #echo "      - \"143:143\""      >> docker-compose.yaml
 #echo "      - \"587:587\""      >> docker-compose.yaml
