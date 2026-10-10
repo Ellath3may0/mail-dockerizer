@@ -1,11 +1,15 @@
 #!/bin/bash
 
+# Install Docker
+sh $(curl -fsSL https://get.docker.com)
+
+# Create working directory
 mkdir docker && cd docker
 
-// Stop services
+# Stop services
 systemctl stop postfix dovecot
 
-// Collect existing information and configurations
+# Collect existing information and configurations
 cp -r /etc/postfix        postetc
 cp -r /etc/dovecot        doveetc
 cp -r /var/spool/postfix  postspool
@@ -69,15 +73,16 @@ docker build -t mail .
 # Generate docker compose file
 echo "Generating Docker Compose file..."
 touch docker-compose.yaml
-echo "services:"              > docker-compose.yaml
-echo "  mail:"                >> docker-compose.yaml
-echo "    image: mail:latest" >> docker-compose.yaml
-echo "    pull_policy: never" >> docker-compose.yaml
-echo "    ports:"             >> docker-compose.yaml
-echo "      - \"143:143\""    >> docker-compose.yaml
-echo "      - \"587:587\""    >> docker-compose.yaml
-echo "      - \"25:25\""      >> docker-compose.yaml
-echo "      - \"110:110\""    >> docker-compose.yaml
+echo "services:"                > docker-compose.yaml
+echo "  mail:"                  >> docker-compose.yaml
+echo "    image: mail:latest"   >> docker-compose.yaml
+echo "    pull_policy: never"   >> docker-compose.yaml
+echo "     network_mode: host"  >> docker-compose.yaml
+#echo "    ports:"               >> docker-compose.yaml
+#echo "      - \"143:143\""      >> docker-compose.yaml
+#echo "      - \"587:587\""      >> docker-compose.yaml
+#echo "      - \"25:25\""        >> docker-compose.yaml
+#echo "      - \"110:110\""      >> docker-compose.yaml
 echo "Docker Compose file generated"
 
 docker compose up
